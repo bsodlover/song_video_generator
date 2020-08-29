@@ -1,9 +1,53 @@
 import moviepy.editor as mpe
 import moviepy.video as mpv
 from random import randint
+from random import randrange
 from math import floor
 from assets.words import word_list
+import youtube_dl
+import sys
+from mutagen.mp3 import MP3
+songs = []
+from os import listdir
+from os.path import isfile, join
 
+class MyLogger(object):
+    def debug(self, msg):
+        pass
+
+    def warning(self, msg):
+        pass
+
+    def error(self, msg):
+        print(msg)
+
+
+def my_hook(d):
+    if d['status'] == 'finished':
+        songs.append(d['filename'])
+        print('Done downloading '+ d['filename'] +' , now converting ...')
+ydl_opts = {
+    'format': 'bestaudio/best',
+    'postprocessors': [{
+        'key': 'FFmpegExtractAudio',
+        'preferredcodec': 'mp3',
+        'preferredquality': '192',
+    }],
+    'logger': MyLogger(),
+    'progress_hooks': [my_hook],
+}
+
+class Main:
+    onlyfiles = [f for f in listdir("assets/movies") if isfile(join("assets/movies", f))]
+    def __init__(self,url):
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        for song in songs:
+            audio = MP3(song)
+            movie = self.onlyfiles[randrange(len(self.onlyfiles))]
+            print(movie)
+            g = Generator("assets/movies/"+movie, song)
+            g.create(audio.info.length-4)
 
 
 class Generator:
@@ -29,7 +73,7 @@ class Generator:
         final.write_videofile('output_file.mp4', temp_audiofile="temp-audio.m4a", remove_temp=True, codec="libx264", audio_codec="aac")
 
     def add_clip(self):
-        r = randint(0, floor(self.clip.duration-10))
+        r = randint(300, floor(self.clip.duration-860))
         subclip = self.clip.subclip(r, r+(r%10))
         merged = mpe.CompositeVideoClip([subclip, self.overlay.subclip(2, 2+r%10)])
         if r%2==0: #adds a fade_in transition if r is even.
@@ -41,13 +85,11 @@ class Generator:
         r = randint(0, len(word_list))
         word = word_list[r]
         spaced_word = '  '.join([e for e in word])
-        clip = mpe.TextClip(spaced_word, fontsize = 70, color = 'white',size=self.clip.size,bg_color = 'black',method='caption',align='center').set_duration(2)
+        clip = mpe.TextClip(spaced_word, font = 'Roboto-Regular', fontsize = 70, color = 'white',size=self.clip.size,bg_color = 'black',method='caption',align='center').set_duration(2)
         self.clip_list.append(clip)
         self.total_duration += 2
-    
-movie_name = input("Filename of Movie?")
-music = input("Filename of music?")
-desired_duration = int(input("Desired edit duration in seconds?"))
+Main(sys.argv[1])
 
-g = Generator(movie_name, music)
-g.create(desired_duration)
+
+
+
