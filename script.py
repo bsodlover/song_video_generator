@@ -3,7 +3,6 @@ import moviepy.video as mpv
 from random import randint
 from random import randrange
 from math import floor
-from assets.words import word_list
 import youtube_dl
 import sys
 from mutagen.mp3 import MP3
