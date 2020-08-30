@@ -102,27 +102,67 @@ class Generator:
         except:
             logging.error("Something has gone wrong while creating final video file " + name)
     def add_clip(self):
-        r = randint(180, floor(self.clip.duration-180))
-        if r in clips_used:
+        print("added clip")
+        self.duration = self.rand_clip_gen(180,180)
+        if self.check_if_used(self.duration) == True:
             i = 0
-            while r in clips_used:
-                r = randint(180, floor(self.clip.duration-180))
+            while self.check_if_used(self.duration) == True:
+                self.duration = self.rand_clip_gen(180,180)
                 i = i + 1
-                if i == 10:
-                    pass
+                logging.error(i)
+                if i >= 200:
+                    print("passed")
+                    i = 0
+                    break
 
-        clips_used.append(r)
-        subclip = self.clip.subclip(r, r+(r%10))
-        merged = mpe.CompositeVideoClip([subclip, self.overlay.subclip(2, 2+r%10)])
-        if r%2==0: #adds a fade_in transition if r is even.
+            while self.check_if_used_last_20(self.duration) == True:
+                print("got to last 10 :D")
+                self.duration = self.rand_clip_gen(180,180)
+                i = i + 1
+                if i >= 200:
+                    i = 0
+                    print("TOP 10 PASSED")
+                    break
+
+
+        for i in self.duration:
+            clips_used.append(i)
+        subclip = self.clip.subclip(self.duration[0], self.duration[0]+(self.duration[0]%10))
+        merged = mpe.CompositeVideoClip([subclip, self.overlay.subclip(2, 2+self.duration[0]%10)])
+        if self.duration[0]%2==0: #adds a fade_in transition if r is even.
             merged = mpv.fx.all.fadein(merged, 3)
         self.clip_list.append(merged)
-        self.total_duration += r%10
+        self.total_duration += self.duration[0]%10
 
     def random_word_screen(self,name):
         clip = mpe.TextClip(name, font = 'Roboto-Regular', fontsize = 70, color = 'white',size=self.clip.size,bg_color = 'black',method='caption',align='center').set_duration(2)
         self.clip_list.append(clip)
         self.total_duration += 2
+
+    def rand_clip_gen(self,min,max):
+        r = randint(min, floor(self.clip.duration-max))
+        duration = [r,r+1,r+2,r+3,r+4,r+5,r+6,r+7,r+8,r+9]
+        return duration
+
+    def check_if_used(self,duration):
+        #print("duartiopm \n "+str(self.duration)+"\n clips used"+str(clips_used))
+        for i in self.duration:
+            if i in clips_used:
+                return True
+
+    def check_if_used_last_20(self,duration):
+        last_20_clips = []
+        i = 0
+        for sec in clips_used:
+            if i <= 200:
+                last_20_clips.append(sec)
+                i = i + 1
+        print(len(last_20_clips))
+        for e in duration:
+            if e in last_20_clips:
+                last_20_clips = []
+                return True
+
 
 if isfile(sys.argv[1]):
     with open(sys.argv[1], 'r') as myfile:
