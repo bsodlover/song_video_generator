@@ -1,7 +1,6 @@
 import moviepy.editor as mpe
 import moviepy.video as mpv
-from random import randint
-from random import randrange
+from random import randrange, randint, shuffle
 from math import floor
 from assets.words import word_list
 import youtube_dl
@@ -85,84 +84,53 @@ class Generator:
         file = scanned_dirs[index][randrange(len(scanned_dirs[index]))]
         return file
 
+    def create_timestamps(self):
+        self.end_range = self.clip.duration-180
+        self.clip_timestamp = [180]
+        while self.clip_timestamp[-1] < self.clip.duration-180:
+            self.clip_timestamp.append(self.clip_timestamp[-1]+10)
+        self.clip_timestamp.pop(-1)
+        diff = self.clip_timestamp[-1]-self.end_range+10
+        self.clip_timestamp[-1] = self.clip_timestamp[-1]-diff
+        shuffle(self.clip_timestamp)
+
     def audi_test(self):
         f = self.clip.set_audio(self.audio)
         f.write_videofile('out.mp4', temp_audiofile="temp-audio.m4a", remove_temp=True, codec="libx264", audio_codec="aac")
     def create(self, desired_length,name,filename):
         self.random_word_screen(name)
+        i = 0
+        self.create_timestamps()
         while self.total_duration < desired_length:
-            self.add_clip()
+           try:
+                self.add_clip(self.clip_timestamp[i])
+                i = i + 1
+           except IndexError:
+                i = 0
+                self.create_timestamps()
+
+        final = mpe.concatenate_videoclips(self.clip_list)
         final = mpe.concatenate_videoclips(self.clip_list)
         image = mpe.ImageClip('assets/img/'+Generator.GetFileFromDir(self,"assets/img")).resize(self.clip.size).set_opacity(0.35).set_duration(self.total_duration)
         final = mpe.CompositeVideoClip([final, image])
-        self.audio = self.audio.set_duration(self.total_duration)
+        self.audio = self.audio.set_duration(desired_length)
         final = final.set_audio(self.audio)
         try:
             final.write_videofile("videos/"+filename+".mkv", temp_audiofile="temp-audio.m4a", remove_temp=True, codec="libx264", audio_codec="aac")
         except:
             logging.error("Something has gone wrong while creating final video file " + name)
-    def add_clip(self):
-        print("added clip")
-        self.duration = self.rand_clip_gen(180,180)
-        if self.check_if_used(self.duration) == True:
-            i = 0
-            while self.check_if_used(self.duration) == True:
-                self.duration = self.rand_clip_gen(180,180)
-                i = i + 1
-                logging.error(i)
-                if i >= 200:
-                    print("passed")
-                    i = 0
-                    break
-
-            while self.check_if_used_last_20(self.duration) == True:
-                print("got to last 10 :D")
-                self.duration = self.rand_clip_gen(180,180)
-                i = i + 1
-                if i >= 200:
-                    i = 0
-                    print("TOP 10 PASSED")
-                    break
-
-
-        for i in self.duration:
-            clips_used.append(i)
-        subclip = self.clip.subclip(self.duration[0], self.duration[0]+(self.duration[0]%10))
-        merged = mpe.CompositeVideoClip([subclip, self.overlay.subclip(2, 2+self.duration[0]%10)])
-        if self.duration[0]%2==0: #adds a fade_in transition if r is even.
+    def add_clip(self,timestamp):
+        subclip = self.clip.subclip(timestamp, timestamp+10)
+        merged = mpe.CompositeVideoClip([subclip, self.overlay.subclip(2, 2+timestamp%10)])
+        if timestamp%2==0: #adds a fade_in transition if r is even.
             merged = mpv.fx.all.fadein(merged, 3)
         self.clip_list.append(merged)
-        self.total_duration += self.duration[0]%10
+        self.total_duration += 10
 
     def random_word_screen(self,name):
         clip = mpe.TextClip(name, font = 'Roboto-Regular', fontsize = 70, color = 'white',size=self.clip.size,bg_color = 'black',method='caption',align='center').set_duration(2)
         self.clip_list.append(clip)
         self.total_duration += 2
-
-    def rand_clip_gen(self,min,max):
-        r = randint(min, floor(self.clip.duration-max))
-        duration = [r,r+1,r+2,r+3,r+4,r+5,r+6,r+7,r+8,r+9]
-        return duration
-
-    def check_if_used(self,duration):
-        #print("duartiopm \n "+str(self.duration)+"\n clips used"+str(clips_used))
-        for i in self.duration:
-            if i in clips_used:
-                return True
-
-    def check_if_used_last_20(self,duration):
-        last_20_clips = []
-        i = 0
-        for sec in clips_used:
-            if i <= 200:
-                last_20_clips.append(sec)
-                i = i + 1
-        print(len(last_20_clips))
-        for e in duration:
-            if e in last_20_clips:
-                last_20_clips = []
-                return True
-
 
 if isfile(sys.argv[1]):
     with open(sys.argv[1], 'r') as myfile:
